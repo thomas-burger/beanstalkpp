@@ -225,6 +225,7 @@ vector< string > Beanstalkpp::Client::listTubes() {
     delete[] payload;
     throw;
   }
+  this->tokenStream.expectEol();
   
   return ret;
 }
