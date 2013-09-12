@@ -41,6 +41,11 @@ class Job;
  */
 class Client {
 public:
+  static const int DEFAULT_PRIORITY;
+  static const int DEFAULT_PORT;
+  static const int DEFAULT_DELAY;
+  static const int DEFAULT_TTR;
+
   /**
    * Creates a new client and connects it to a server.
    * 
@@ -69,14 +74,17 @@ public:
   /**
    * Adds a job consisting of a string to the server
    * 
-   * @param data The data to send
+   * @param data      The data to send
+   * @param priority  The priority of the job (jobs with smaller priority are scheduled first)
+   * @param delay     The delay in seconds until the job gets into the ready queue
+   * @param timeToRun The time in seconds that a worker has to finish the job
    * 
    * @return The id the job got on the server
    * 
    * @throws ServerException With reason BAD_FORMAT on unexpected server response
    * @throws ServerException With reason JOB_TOO_BIG on jobs the server deems too big
    */
-  int put(const std::string &data);
+  int put(const std::string &data, int priority = DEFAULT_PRIORITY, int delay = DEFAULT_DELAY, int timeToRun = DEFAULT_TTR);
   
   /**
    * Reserves the next job in the queue. This function is blocking until a job becomes available in
@@ -192,17 +200,22 @@ public:
    * @throws ServerException With reason BAD_FORMAT on unexpected server response
    */
   void del(const Job &j);
-  
+  void del(const job_p_t &j);
+
   /**
-   * The delete command removes a job from the server entirely. It is normally used by the client 
-   * when the job has successfully run to completion. A client can only delete jobs that it has 
-   * reserved or jobs that are buried. 
+   * The release command puts a reserved job back into the ready queue (and marks
+   * its state as "ready") to be run by any client. It is normally used when the job
+   * fails because of a transitory error.
    * 
-   * @param j The job to delete
+   * @param j        The job to release
+   * @param priority The new priority in the queue
+   * @param delay    The delay before the job is put in the ready queue
    * 
+   * @throws ServerException With status NOT_FOUND if the job was not found on the server
    * @throws ServerException With reason BAD_FORMAT on unexpected server response
    */
-  void del(const job_p_t &j);
+  void release(const Job &j, int priority = 10, int delay = 0);
+  void release(const job_p_t &j, int priority = 10, int delay = 0);
   
   /**
    * The bury command puts a job into the "buried" state. Buried jobs are put into a FIFO linked 
@@ -216,6 +229,7 @@ public:
    * @throws ServerException With reason BAD_FORMAT on unexpected server response
    */
   void bury(const Job &j, int priority = 10);
+  void bury(const job_p_t &j, int priority = 10);
   
   /**
    * The "watch" command adds the named tube to the watch list for the current connection. A reserve

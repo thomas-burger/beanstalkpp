@@ -31,12 +31,12 @@
 using namespace std;
 using namespace boost::asio::ip;
 
-#define DEFAULT_PRIORITY 1024
-#define DEFAULT_PORT 11300
+const int Beanstalkpp::Client::DEFAULT_PRIORITY = 1024;
+const int Beanstalkpp::Client::DEFAULT_PORT = 11300;
 // no delay
-#define DEFAULT_DELAY 0 
+const int Beanstalkpp::Client::DEFAULT_DELAY = 0; 
 // 1 minute
-#define DEFAULT_TTR 60 
+const int Beanstalkpp::Client::DEFAULT_TTR = 60; 
 
 Beanstalkpp::Client::Client(const std::string& server, int port): 
   socket(io_service), tokenStream(socket) {
@@ -60,11 +60,11 @@ void Beanstalkpp::Client::connect() {
   }
 }
 
-int Beanstalkpp::Client::put(const std::string& data) {
+int Beanstalkpp::Client::put(const std::string& data, int priority, int delay, int timeToRun) {
   stringstream str;
   string reply;
   
-  str << "put " << DEFAULT_PRIORITY << " 0 " << DEFAULT_TTR << " " << data.length() << "\r\n";
+  str << "put " << priority << " " << delay << " " << timeToRun << " " << data.length() << "\r\n";
   str << data << "\r\n";
   
   this->sendCommand(str);
@@ -168,6 +168,24 @@ void Beanstalkpp::Client::del(const Beanstalkpp::job_p_t& j) {
   del(*j);
 }
 
+void Beanstalkpp::Client::release(const Beanstalkpp::Job& j, int priority, int delay) {
+  stringstream s;
+  s << "release " << j.getJobId() << " " << priority << " " << delay << "\r\n";
+  this->sendCommand(s);
+  
+  string response = this->tokenStream.nextString();
+  this->tokenStream.expectEol();
+  
+  if(response.compare("NOT_FOUND") == 0)
+	  throw ServerException(ServerException::NOT_FOUND, "Got not found in reply to release");
+
+  if(response.compare("RELEASED") != 0)
+	  throw ServerException(ServerException::BAD_FORMAT, "Didn't get RELEASED reply to release command");
+}
+
+void Beanstalkpp::Client::release(const Beanstalkpp::job_p_t& j, int priority, int delay) {
+  release(*j, priority, delay);
+}
 
 void Beanstalkpp::Client::bury(const Beanstalkpp::Job& j, int priority) {
   stringstream s;
@@ -182,6 +200,10 @@ void Beanstalkpp::Client::bury(const Beanstalkpp::Job& j, int priority) {
   
   if(response.compare("BURIED") != 0)
     throw ServerException(ServerException::BAD_FORMAT, "Didn't get BURIED reply to bury command");
+}
+
+void Beanstalkpp::Client::bury(const Beanstalkpp::job_p_t& j, int priority) {
+  bury(*j);
 }
 
 size_t Beanstalkpp::Client::watch(const std::string& tube) {
