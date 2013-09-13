@@ -48,3 +48,4 @@ INSTALL(FILES "beanstalkpp.h" DESTINATION include)
 
 SET(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -g -O0")
 SET(CMAKE_CXX_FLAGS_RELEASE "-g0 -O2")
+SET(CMAKE_CXX_FLAGS "-std=c++11")
